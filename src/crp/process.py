@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from crp.process import DirichletMultinomialTable
+from .table import DirichletMultinomialTable
 
 class ChineseRestaurantProcess:
     _table_type = DirichletMultinomialTable
