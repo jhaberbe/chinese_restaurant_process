@@ -22,7 +22,7 @@ class ChineseRestaurantTable:
     def predict(self, count: np.ndarray):
         pass
 
-class DirichletTable(ChineseRestaurantTable):
+class DirichletMultinomialTable(ChineseRestaurantTable):
     def __init__(self, data: np.ndarray):
         self.data = data
         self.members = set()
