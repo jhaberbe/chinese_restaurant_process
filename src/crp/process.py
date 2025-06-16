@@ -75,3 +75,31 @@ class ChineseRestaurantProcess:
                     # This is sort of bad.
                     self.classes[sampled_class].add_member(index)
                     self.assignments[index] = int(sampled_class)
+
+    def predict(self, X_new: np.ndarray, min_membership: float = 0.01) -> np.ndarray:
+        if not self.classes:
+            raise ValueError("No classes have been trained. Run `run()` before predicting.")
+
+        n_total = self.data.shape[0]
+        valid_classes = {
+            k: v for k, v in self.classes.items()
+            if len(v.members) >= min_membership * n_total
+        }
+
+        if not valid_classes:
+            raise ValueError("No classes meet the minimum membership threshold.")
+
+        class_keys = np.array(list(valid_classes.keys()))
+        class_tables = [valid_classes[k] for k in class_keys]
+        class_log_priors = np.log1p([len(table.members) for table in class_tables])
+
+        assignments = np.empty(X_new.shape[0], dtype=class_keys.dtype)
+
+        for i, x in enumerate(tqdm(X_new, desc="Predicting")):
+            nlls = np.array([
+                table.predict(x) + log_prior
+                for table, log_prior in zip(class_tables, class_log_priors)
+            ])
+            assignments[i] = class_keys[np.argmax(nlls)]
+
+        return assignments
