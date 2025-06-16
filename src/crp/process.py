@@ -1,8 +1,8 @@
 from tqdm import tqdm
-from crp.process import DirichletTable
+from crp.process import DirichletMultinomialTable
 
 class ChineseRestaurantProcess:
-    _table_type = DirichletTable
+    _table_type = DirichletMultinomialTable
 
     def __init__(self, data: np.array, expected_number_of_classes: int = 1):
         # Data
