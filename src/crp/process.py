@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from process import DirichletTable
+from crp.process import DirichletTable
 
 class ChineseRestaurantProcess:
     _table_type = DirichletTable
