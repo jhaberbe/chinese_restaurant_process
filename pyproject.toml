@@ -8,9 +8,10 @@ version = "0.1.0"
 description = "Chinese Restaurant Process in Python"
 authors = [{ name = "James Haberberger", email = "jhaberbe@stanford.edu" }]
 dependencies = [
+    "ipykernel>=6.29.5",
     "numpy",
     "scipy",
-    "tqdm"
+    "tqdm",
 ]
 
 [tool.setuptools]

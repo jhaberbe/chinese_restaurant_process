@@ -2,6 +2,8 @@
 
 Particularly for the case of single cell classification inference.
 
+__Work In Progress__
+
 To see usage, go to the notebooks and open `usage.ipynb`.
 
 ### TODO
