@@ -75,11 +75,12 @@ We welcome contributions. If you'd like to contribute, please follow these steps
 5. Create a pull request against the main branch.
 
 #### Right now, work is being done to add the following features:
-- [] Infinitely Nested Chinese Restaurant Process, as described by [Blei et al. (2010)](https://cocosci.princeton.edu/tom/papers/ncrp.pdf). Some work is already done, but it is not yet ready for use (`notebook/In Progress/Nested-Chinese-Restaurant-Process.ipynb`).
-- [] More distributions (Gaussian, Gamma, etc. etc.)
-- [] Plotting utilities to visualize the class structure of the CRP.
-- [] Utilities to extract out which features are most important for each class.
-- [] Testing (I've never done testing before, so this will be a learning experience for me).
+- [ ] Improve sampling of inital hyperparameters, right now the hyperparameters are sampled are fixed, and it works well for most cases, but it would be nice to have a more robust sampling method.
+- [ ] Infinitely Nested Chinese Restaurant Process, as described by [Blei et al. (2010)](https://cocosci.princeton.edu/tom/papers/ncrp.pdf). Some work is already done, but it is not yet ready for use (`notebook/In Progress/Nested-Chinese-Restaurant-Process.ipynb`).
+- [ ] More distributions (Gaussian, Gamma, etc. etc.)
+- [ ] Plotting utilities to visualize the class structure of the CRP.
+- [ ] Utilities to extract out which features are most important for each class.
+- [ ] Testing (I've never done testing before, so this will be a learning experience for me).
 
 ## License
 --------
