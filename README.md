@@ -2,12 +2,18 @@
 
 Particularly for the case of single cell classification inference.
 
+Inference is available for:
+- Count Data (Dirichlet Multinomial) for text-corpus type classification
+- Count Data (Negative Binomial Distribution) for single cell classification
+- Panel Data (Bernoulli Distribution) for classification of binary panel data
+
+
 __Work In Progress__
 
 To see usage, go to the notebooks and open `usage.ipynb`.
 
 ### TODO
-- [ ] Fully nested chinese restaurant process (Blei's infinite tree thing)
+- [1/2] Fully nested chinese restaurant process (Blei's infinite tree thing)
 
 - [ ] Easier to extract marker genes.
     - At the moment, you can call the following below, and get the concentration parameters for each of the classes, and use that to determine marker genes.
@@ -21,4 +27,5 @@ marker_genes = pd.DataFrame({
 ```
 
 - [ ] Some plotting utilities might be nice.
+
 - [ ] Confidence intervals / confidence scores might be useful.

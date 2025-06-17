@@ -5,7 +5,7 @@ class ChineseRestaurantTable:
     """Base for Chinese Restaurant Tables"""
 
     def __init__(self, data):
-        self.data = data
+        self.data = np.array(data)
         self.members = set()
     
     def add_member(self, index: int):
@@ -22,9 +22,11 @@ class ChineseRestaurantTable:
     def predict(self, count: np.ndarray):
         pass
 
+
+
 class DirichletMultinomialTable(ChineseRestaurantTable):
     def __init__(self, data: np.ndarray):
-        self.data = data
+        self.data = np.array(data)
         self.members = set()
         self.concentration = np.ones((1, self.data.shape[1]))  # shape: (D,)
 
@@ -56,9 +58,11 @@ class DirichletMultinomialTable(ChineseRestaurantTable):
     def predict(self, count: np.ndarray):
         return self._dirichlet_multinomial_log_likelihood(count, self.concentration)
 
+
+
 class NegativeBinomialTable(ChineseRestaurantTable):
     def __init__(self, data: np.ndarray):
-        self.data = data
+        self.data = np.array(data)
         self.members = set()
 
         D = self.data.shape[1]
@@ -112,3 +116,49 @@ class NegativeBinomialTable(ChineseRestaurantTable):
 
     def predict(self, count: np.ndarray):
         return self._gamma_poisson_log_likelihood(count, self.alpha, self.beta)
+
+
+
+class BernoulliTable(ChineseRestaurantTable):
+    def __init__(self, data: np.ndarray):
+        assert data.max() == 1, data.min() == 0, "Data must be binary (0 or 1)."
+        self.data = np.array(data)
+        self.members = set()
+
+        D = self.data.shape[1]
+        self.alpha = np.ones(D)  # prior shape
+        self.beta = np.ones(D)   # prior rate
+
+        self.reference_total = np.mean(np.sum(data, axis=1))
+
+    def add_member(self, index: int):
+        if index not in self.members:
+            self.members.add(index)
+            self.alpha += self.data[index]
+            self.beta += 1 - self.data[index]
+
+    def remove_member(self, index: int):
+        if index in self.members:
+            self.members.remove(index)
+            self.alpha -= self.data[index]
+            self.beta -= 1 - self.data[index]
+
+    def _bernoulli_likelihood(self, count: np.ndarray, alpha: np.ndarray, beta: np.ndarray) -> float:
+        return (
+            np.sum(count * np.log(alpha / (alpha + beta))) +
+            np.sum((1 - count) * np.log(beta / (alpha + beta)))
+        )
+
+    def log_likelihood(self, index: int, posterior: bool = False):
+        x = self.data[index]
+        if posterior:
+            alpha = self.alpha + x
+            beta = self.beta + 1 - x
+        else:
+            alpha = self.alpha
+            beta = self.beta
+
+        return self._bernoulli_likelihood(x, alpha, beta)
+
+    def predict(self, count: np.ndarray):
+        return self._bernoulli_likelihood(count, self.alpha, self.beta)
