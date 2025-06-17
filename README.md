@@ -11,7 +11,7 @@ chinese_restaurant_process is a Python package that provides an easy to use inte
 You can install Chinese Restaurant Process using pip:
 
 ```bash
-pip install git+https://www.github.com/jhaberbe/chinese_restaurant_process
+pip install chinese_restaurant_process
 ```
 
 Or, if you want to install the package from source, you can use:
