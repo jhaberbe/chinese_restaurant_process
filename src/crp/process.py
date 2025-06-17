@@ -40,6 +40,11 @@ class ChineseRestaurantProcess:
         else:
             raise ValueError(f"Class ID {class_id} does not exist.")
 
+    def return_class_parameters(self, index = None):
+        return {
+            k: v.get_parameters(index=index) for k, v in self.classes.items()
+        }
+
     def run(self, epochs=1, min_membership=0.01):
         # For each epoch
         for epoch in range(epochs):

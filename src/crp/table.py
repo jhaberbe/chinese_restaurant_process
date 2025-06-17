@@ -16,6 +16,10 @@ class ChineseRestaurantTable:
         if index in self.members:
             self.members.remove(index)
 
+    def return_parameters(self):
+        """Return the parameters of the table."""
+        raise NotImplementedError("This method should be implemented in subclasses.")
+
     def log_likelihood(self, index: int, posterior: bool = False):
         pass
 
@@ -39,6 +43,18 @@ class DirichletMultinomialTable(ChineseRestaurantTable):
         if index in self.members:
             self.members.remove(index)
             self.concentration -= self.data[index]
+    
+    def return_parameters(self, index = None):
+        """Return the parameters of the table."""
+        parameters = pd.Series({
+            "concentration": self.concentration
+        })
+
+        if index != None:
+            parameters.index = index
+            return parameters
+        else:
+            return parameters
 
     def _dirichlet_multinomial_log_likelihood(self, count: np.ndarray, concentration: np.ndarray) -> float:
         N = np.sum(count)
@@ -103,6 +119,19 @@ class NegativeBinomialTable(ChineseRestaurantTable):
 
         return np.sum(term1 + term2 + term3 + term4 + term5)
 
+    def return_parameters(self, index = None):
+        """Return the parameters of the table."""
+        parameters = pd.DataFrame({
+            "mean": self.alpha,
+            "dispersion": self.beta / (1 + self.beta)
+        })
+
+        if index != None:
+            parameters.index = index
+            return parameters
+        else:
+            return parameters
+
     def log_likelihood(self, index: int, posterior: bool = False):
         x = self.data[index]
         if posterior:
@@ -148,6 +177,18 @@ class BernoulliTable(ChineseRestaurantTable):
             np.sum(count * np.log(alpha / (alpha + beta))) +
             np.sum((1 - count) * np.log(beta / (alpha + beta)))
         )
+
+    def return_parameters(self, index = None):
+        """Return the parameters of the table."""
+        parameters = pd.Series({
+            "probability": self.alpha / (self.alpha + self.beta)
+        })
+
+        if index != None:
+            parameters.index = index
+            return parameters
+        else:
+            return parameters
 
     def log_likelihood(self, index: int, posterior: bool = False):
         x = self.data[index]
