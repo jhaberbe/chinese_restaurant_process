@@ -3,28 +3,72 @@ from tqdm import tqdm
 from .table import ChineseRestaurantTable, DirichletMultinomialTable
 
 class ChineseRestaurantProcess:
+    """
+    A Chinese Restaurant Process (CRP) model.
+
+    The CRP is a Bayesian nonparametric model for classifying data.
+    It is a special case of the Dirichlet process mixture model.
+
+    Attributes:
+        data (np.array): The initial data.
+        classes (dict): A dictionary of classes, where each key is a class ID and each value is a ChineseRestaurantTable object.
+        assignments (list): A list of class IDs assigned to each data point.
+        expected_number_of_classes (int): The expected number of classes.
+        _alpha (float): The prior shape parameter.
+        _table_type (class): The type of table to use.
+    """
+
     _table_type = DirichletMultinomialTable
 
     def __init__(self, data: np.array, expected_number_of_classes: int = 1):
-        # Data
-        self.data = data
+        """
+        Initialize the CRP model.
 
-        # Classes
+        Args:
+            data (np.array): The initial data.
+            expected_number_of_classes (int): The expected number of classes. Defaults to 1.
+
+        Raises:
+            ValueError: If the data is not a NumPy array.
+        """
+        self.data = data
         self.classes = {}
         self.assignments = [-1] * data.shape[0]
-
-        # Expected number of classes, setting alpha prior
         self.expected_number_of_classes = expected_number_of_classes
         self._alpha = self.expected_number_of_classes / np.log(self.data.shape[0])
-    
+
     def set_table_type(self, cls):
+        """
+        Set the type of table to use.
+
+        Args:
+            cls (class): The type of table to use.
+
+        Notes:
+            The table type is stored in the `_table_type` attribute.
+        """
         self._table_type = cls
-    
+
     def generate_new_table(self):
+        """
+        Generate a new table.
+
+        Returns:
+            ChineseRestaurantTable: A new table.
+        """
         return self._table_type(self.data)
 
     def add_table(self, table: ChineseRestaurantTable, index: int):
-        # Find smallest unused lot.
+        """
+        Add a table to the model.
+
+        Args:
+            table (ChineseRestaurantTable): The table to add.
+            index (int): The index of the data point to assign to the table.
+
+        Notes:
+            The table is assigned to the data point with the smallest unused lot ID.
+        """
         new_class_id = 0
         while new_class_id in self.classes:
             new_class_id += 1
@@ -33,6 +77,15 @@ class ChineseRestaurantProcess:
         self.assignments[index] = new_class_id
 
     def remove_table(self, class_id):
+        """
+        Remove a table from the model.
+
+        Args:
+            class_id (int): The ID of the table to remove.
+
+        Raises:
+            ValueError: If the class ID does not exist.
+        """
         if class_id in self.classes:
             for member in self.classes[class_id].members:
                 self.assignments[member] = -1
@@ -40,48 +93,70 @@ class ChineseRestaurantProcess:
         else:
             raise ValueError(f"Class ID {class_id} does not exist.")
 
-    def return_class_parameters(self, index = None):
+    def return_class_parameters(self, index: int = None):
+        """
+        Return the parameters of the classes.
+
+        Args:
+            index (int): An optional index to return parameters for. Defaults to None.
+
+        Returns:
+            dict: A dictionary of class parameters, where each key is a class ID and each value is a pandas Series.
+        """
         return {
             k: v.get_parameters(index=index) for k, v in self.classes.items()
         }
 
-    def run(self, epochs=1, min_membership=0.01):
-        # For each epoch
+    def run(self, epochs: int = 1, min_membership: float = 0.01):
+        """
+        Run the CRP model.
+
+        Args:
+            epochs (int): The number of epochs to run. Defaults to 1.
+            min_membership (float): The minimum membership threshold. Defaults to 0.01.
+
+        Notes:
+            The model is run for the specified number of epochs, with a shuffled selection of data points for robustness.
+        """
         for epoch in range(epochs):
-            # For each item (shuffled selection for robustness).
             for index in tqdm(np.random.permutation(self.data.shape[0])):
-
-                # Generate new table for this round
                 crp_new = self.generate_new_table()
-
-                # Existing class log-likelihoods
                 cluster_keys = list(self.classes.keys()) + ["new"]
                 nlls = []
                 for k in self.classes:
                     table = self.classes[k]
-                    log_like = table.log_likelihood(index, posterior = True)
+                    log_like = table.log_likelihood(index, posterior=True)
                     log_prior = np.log1p(len(table.members))
                     nlls.append(log_like + log_prior)
 
-                # New table likelihood
-                log_new = crp_new.log_likelihood(index, posterior = True) + np.log(self._alpha)
+                log_new = crp_new.log_likelihood(index, posterior=True) + np.log(self._alpha)
                 nlls.append(log_new)
 
-                # Softmax sampling
                 probs = np.exp(nlls - np.max(nlls))
                 probs /= probs.sum()
                 sampled_idx = np.random.choice(len(probs), p=probs)
                 sampled_class = cluster_keys[sampled_idx]
 
-                # Assignment
                 if sampled_class == "new":
                     self.add_table(crp_new, index)
                 else:
-                    # This is sort of bad.
                     self.classes[sampled_class].add_member(index)
                     self.assignments[index] = int(sampled_class)
 
     def predict(self, X_new: np.ndarray, min_membership: float = 0.01) -> np.ndarray:
+        """
+        Predict the class labels for the new data points.
+
+        Args:
+            X_new (np.ndarray): The new data points.
+            min_membership (float): The minimum membership threshold. Defaults to 0.01.
+
+        Returns:
+            np.ndarray: The predicted class labels.
+
+        Raises:
+            ValueError: If no classes have been trained.
+        """
         if not self.classes:
             raise ValueError("No classes have been trained. Run `run()` before predicting.")
 
