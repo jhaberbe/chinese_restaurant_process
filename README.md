@@ -56,7 +56,12 @@ labels = crp.predict(X_new, min_membership=0.0)
 
 ### Documentation
 
-For more information on the package's functionality, please refer to the [documentation](https://[package_name]-docs.readthedocs.io/).
+We have several notebooks in teh `notebooks` directory that demonstrate the usage of the Chinese Restaurant Process. You can run these notebooks to see how the package works in practice.
+
+Recommended reading order is:
+- Usage.ipynb
+- What-The-Heck-Is-Collapsed-Gibbs-Sampling.ipynb
+- Explaining-Class-Structure.ipynb
 
 ## Contributing
 ------------
@@ -68,6 +73,13 @@ We welcome contributions. If you'd like to contribute, please follow these steps
 3. Make the changes to your branch.
 4. Commit your changes with a meaningful commit message.
 5. Create a pull request against the main branch.
+
+#### Right now, work is being done to add the following features:
+- [ ] Infinitely Nested Chinese Restaurant Process, as described by [Blei et al. (2010)](https://cocosci.princeton.edu/tom/papers/ncrp.pdf). Some work is already done, but it is not yet ready for use (`notebook/In Progress/Nested-Chinese-Restaurant-Process.ipynb`).
+- [ ] More distributions (Gaussian, Gamma, etc. etc.)
+- [ ] Plotting utilities to visualize the class structure of the CRP.
+- [ ] Utilities to extract out which features are most important for each class.
+- [ ] Testing (I've never done testing before, so this will be a learning experience for me).
 
 ## License
 --------
