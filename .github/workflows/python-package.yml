@@ -1,5 +1,3 @@
-# PyPI Uploading
-
 name: PyPI Upload
 
 on:
@@ -23,18 +21,9 @@ jobs:
         run: |
           pip install twine
 
-      - name: Login to PyPI
-        env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python -m twine login --username $PYPI_USERNAME --password $PYPI_PASSWORD
-
       - name: Upload package
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-          PACKAGE_NAME: 'chinese_restaurant_process'
-          PACKAGE_VERSION: '1.0.0'
         run: |
-          python -m twine upload dist/*
+          python -m twine upload --repository pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
