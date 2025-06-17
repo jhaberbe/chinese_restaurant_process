@@ -26,14 +26,14 @@ class ChineseRestaurantProcessNode:
         self.expected_number_of_classes = expected_number_of_classes
         self.alpha = expected_number_of_classes / np.log(self.data.shape[0])
 
-    def add_child(self, data):
+    def add_child(self, data, scale_factor: int = 2):
         # Create a new child node with the given data.
         child = ChineseRestaurantProcessNode(
             data,
             depth=self.depth + 1,
             parent=self,
             table_class=self.table_class,
-            expected_number_of_classes = self.expected_number_of_classes
+            expected_number_of_classes = self.expected_number_of_classes * scale_factor
         )
 
         # Find the next available slot for the child.
