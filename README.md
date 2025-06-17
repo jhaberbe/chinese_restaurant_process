@@ -69,4 +69,4 @@ We welcome contributions. If you'd like to contribute, please follow these steps
 ## License
 --------
 
-[Package Name] is released under the [License Name] license. See the [LICENSE] file for more information.
+Chinese Restaurant Process is released under the GPL v3 license. See the LICENSE file for more information.

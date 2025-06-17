@@ -1,4 +1,0 @@
-ipykernel>=6.29.5
-numpy
-scipy
-tqdm
