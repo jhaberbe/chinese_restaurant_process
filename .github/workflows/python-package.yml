@@ -28,7 +28,7 @@ jobs:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python -m twine.login --username $PYPI_USERNAME --password $PYPI_PASSWORD
+          python -m twine login --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
       - name: Upload package
         env:
