@@ -1,5 +1,4 @@
 # chinese_restaurant_process
-================
 
 chinese_restaurant_process is a Python package that provides an easy to use interface for simulating the Chinese Restaurant Process (CRP), a popular model in Bayesian nonparametrics.
 
