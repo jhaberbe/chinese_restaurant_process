@@ -418,7 +418,6 @@ class BernoulliTable(ChineseRestaurantTable):
             The data is stored as a 2D NumPy array, where each row represents
             a single observation, and each column represents a binary feature.
         """
-        assert data.max() == 1, data.min() == 0, "Data must be binary (0 or 1)."
         self.data = np.array(data)
         self.members = set()
 
