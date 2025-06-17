@@ -1,9 +1,7 @@
 name: Publish to PyPI
 
 on:
-  push:
-    tags:
-      - 'v0.0.1'  # Triggers on version tags like v1.0.0
+  push
 
 jobs:
   build-and-publish:
