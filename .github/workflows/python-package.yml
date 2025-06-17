@@ -1,7 +1,9 @@
 name: Publish to PyPI
 
 on:
-  pushjobs:
+  push
+  
+jobs:
   build-and-publish:
     name: Build and publish Python package
     runs-on: ubuntu-latest
