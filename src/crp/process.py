@@ -140,7 +140,7 @@ class ChineseRestaurantProcess:
                 if sampled_class == "new":
                     self.add_table(crp_new, index)
                 else:
-             jj       self.classes[sampled_class].add_member(index)
+                    self.classes[sampled_class].add_member(index)
                     self.assignments[index] = int(sampled_class)
 
     def predict(self, X_new: np.ndarray, min_membership: float = 0.01) -> np.ndarray:
