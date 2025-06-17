@@ -14,10 +14,14 @@ You can install Chinese Restaurant Process using pip:
 pip install chinese_restaurant_process
 ```
 
-Or, if you want to install the package from source, you can use:
-
+You can install the latest version directly from the GitHub repository using pip:
 ```bash
-git clone https://github.com/jhabere/chinese_restaurant_process.git
+pip install git+https://github.com/jhaberbe/chinese_restaurant_process
+```
+
+Or, if you want to install the package from source, you can use:
+```bash
+git clone https://github.com/jhaberbe/chinese_restaurant_process.git
 pip install .
 ```
 
