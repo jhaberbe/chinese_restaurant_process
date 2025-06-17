@@ -1,18 +1,50 @@
 import numpy as np
+from tqdm import trange, tqdm
 from .table import ChineseRestaurantTable, DirichletMultinomialTable, NegativeBinomialTable
 
-class CRPNode:
-    def __init__(self, data, depth=0, parent=None, table_class=None):
+class ChineseRestaurantProcessNode:
+    def __init__(
+            self, 
+            data, 
+            table_class: ChineseRestaurantTable, 
+            parent = None, 
+            depth: int = 0,
+            expected_number_of_classes: int = 1
+        ):
+        # Setup data.
+        self.data = data
+        self.table_class = table_class
+        self.table = self.table_class(data)
+
+        # Setup tree structure.
         self.depth = depth
         self.parent = parent
-        self.children = []
+        self.children = {}
         self.members = set()
-        self.table = table_class(data)
-        self.table_class = table_class
+
+        # Setup infernce machinery.
+        self.expected_number_of_classes = expected_number_of_classes
+        self.alpha = expected_number_of_classes / np.log(self.data.shape[0])
 
     def add_child(self, data):
-        child = CRPNode(data, depth=self.depth + 1, parent=self, table_class=self.table_class)
-        self.children.append(child)
+        # Create a new child node with the given data.
+        child = ChineseRestaurantProcessNode(
+            data,
+            depth=self.depth + 1,
+            parent=self,
+            table_class=self.table_class,
+            expected_number_of_classes = self.expected_number_of_classes
+        )
+
+        # Find the next available slot for the child.
+        i = 0
+        while i in self.children:
+            i+=1
+
+        # Add the child to the children dictionary.
+        self.children[i] = child
+
+        # Return the newly created child node.
         return child
 
     def add_member(self, index):
@@ -22,90 +54,106 @@ class CRPNode:
     def remove_member(self, index):
         self.members.discard(index)
         self.table.remove_member(index)
+    
+    def has_member(self, index):
+        return index in self.members
+    
+    @staticmethod
+    def sample_path(node, index, depth=0, max_depth=4):
+        node.add_member(index)
+        existing_children = list(node.children.items())
+        log_posteriors = []
 
-class NestedCRP:
-    def __init__(self, data, table_class = DirichletMultinomialTable, alpha=1.0, max_depth=3):
-        self.data = data
-        self.table_class = table_class
-        self.alpha = alpha
-        self.max_depth = max_depth
-        self.root = CRPNode(data, table_class=table_class)
-        self.assignments = [None] * data.shape[0]
+        # Score existing children
+        for child_key, child_node in existing_children:
+            ll = child_node.table.log_likelihood(index, posterior=True)
+            prior = np.log1p(len(child_node.members))  # prior favors larger children
+            log_posteriors.append(ll + prior)
 
-    def _sample_path(self, index):
-        path = []
-        node = self.root
+        # Score new child
+        new_child = ChineseRestaurantProcessNode(
+            node.table.data,
+            depth = node.depth + 1,
+            parent = node,
+            table_class = node.table_class,
+            expected_number_of_classes = node.expected_number_of_classes
+        )
 
-        for depth in range(self.max_depth):
-            path.append(node)
+        # Log likelihood of the new child
+        ll_new = new_child.table.log_likelihood(index, posterior=True)
+        prior_new = np.log(node.alpha if hasattr(node, 'alpha') else 1.0)  # Use alpha if set, else 1.0
+        log_posteriors.append(ll_new + prior_new)
 
-            # Score existing children
-            log_scores = [child.table.log_likelihood(index, posterior=True) + np.log1p(len(child.members))
-                          for child in node.children]
+        # Normalize and sample
+        log_posteriors = np.array(log_posteriors)
+        max_log = np.max(log_posteriors)
+        probs = np.exp(log_posteriors - max_log)
+        probs /= probs.sum()
 
-            # Score potential new child
-            new_child = CRPNode(self.data, depth=node.depth + 1, parent=node, table_class=self.table_class)
-            log_new = new_child.table.log_likelihood(index, posterior=True) + np.log(self.alpha)
+        choice = np.random.choice(len(probs), p=probs)
 
-            log_scores.append(log_new)
-            scores = np.exp(log_scores - np.max(log_scores))
-            probs = scores / scores.sum()
-            choice = np.random.choice(len(probs), p=probs)
+        if choice == len(existing_children):
+            # Create and add new child
+            new_key = 0
+            while new_key in node.children:
+                new_key += 1
+            node.children[new_key] = new_child
+            return [new_key]
 
-            if choice == len(node.children):
-                # Create new node
-                node = node.add_child(self.data)
-                node.add_member(index)
+        else:
+            child_key = existing_children[choice][0]
+            if depth + 1 < max_depth:
+                # Recurse down the chosen child node
+                path = ChineseRestaurantProcessNode.sample_path(
+                    node.children[child_key],
+                    index,
+                    depth = depth + 1,
+                    max_depth = max_depth
+                )
+                return [child_key] + path
             else:
-                node = node.children[choice]
-                node.add_member(index)
+                # At max depth, add member to this node and return path
+                node.children[child_key].add_member(index)
+                return [child_key]
 
-            if not node.children or node.depth + 1 == self.max_depth:
-                break
+    def predict_paths(root, count_matrix, max_depth=4):
+        """
+        For each row in the count_matrix, traverse the tree from root,
+        selecting the most likely child at each level, returning the path.
 
-        return path
+        Returns:
+            paths: list of lists of keys, one per sample.
+        """
+        paths = []
+        for index in trange(count_matrix.shape[0]):
+            node = root
+            path = []
+            depth = 0
 
-    def run_epoch(self):
-        for index in tqdm(np.random.permutation(self.data.shape[0]), desc="Sampling"):
-            # Remove from current assignment
-            current_path = self.assignments[index]
-            if current_path:
-                for node in current_path:
-                    node.remove_member(index)
+            while depth < max_depth and node.children:
+                best_key = None
+                best_score = -np.inf
 
-            # Sample new path
-            path = self._sample_path(index)
+                for key, child in node.children.items():
+                    ll = child.table.log_likelihood(index, posterior=True)
+                    prior = np.log1p(len(child.members))  # favor larger clusters
+                    score = ll + prior
+                    if score > best_score:
+                        best_score = score
+                        best_key = key
 
-            for node in path:
-                node.add_member(index)
+                if best_key is None:
+                    break  # no children
 
-            self.assignments[index] = path
+                path.append(best_key)
+                node = node.children[best_key]
+                depth += 1
 
-    def run(self, epochs=1):
+            paths.append(path)
+
+        return paths
+
+    def run(self, epochs = 1, max_depth = 4):
         for _ in range(epochs):
-            self.run_epoch()
-
-    def get_node_assignments(self, as_dataframe=True):
-        """Return path assignments for each sample as strings like '0.1.2'."""
-        assignments = []
-
-        for path in self.assignments:
-            if path is None:
-                assignments.append(None)
-                continue
-
-            node = path[-1]
-            path_ids = []
-            while node.parent is not None:
-                parent = node.parent
-                for idx, child in enumerate(parent.children):
-                    if child is node:
-                        path_ids.append(str(idx))
-                        break
-                node = parent
-            path_str = ".".join(reversed(path_ids)) if path_ids else "0"
-            assignments.append(path_str)
-
-        if as_dataframe:
-            return pd.DataFrame({"sample_index": range(len(assignments)), "node_path": assignments})
-        return assignments
+            for index in trange(self.data.shape[0]):
+                path = ChineseRestaurantProcessNode.sample_path(self, index, max_depth = max_depth)
