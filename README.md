@@ -56,7 +56,7 @@ labels = crp.predict(X_new, min_membership=0.0)
 
 ### Documentation
 
-We have several notebooks in teh `notebooks` directory that demonstrate the usage of the Chinese Restaurant Process. You can run these notebooks to see how the package works in practice.
+We have several notebooks in the `notebooks` directory that demonstrate the usage of the Chinese Restaurant Process. You can run these notebooks to see how the package works in practice.
 
 Recommended reading order is:
 - Usage.ipynb
