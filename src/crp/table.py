@@ -38,6 +38,10 @@ class ChineseRestaurantTable:
         self.data = np.array(data)
         self.members = set() if members is None else members
     
+    def _row_exposure(self, index: int) -> float:
+        total = float(np.sum(self.data[index]))
+        return (total / self.reference_total) if self.reference_total > 0 else 1.0
+
     def add_member(self, index: int):
         """
         Adds a member to the table at the specified index.
@@ -52,6 +56,8 @@ class ChineseRestaurantTable:
             raise ValueError("Index must be a non-negative integer")
         if index not in self.members:
             self.members.add(index)
+            self.alpha += self.data[index]
+            self.beta += self._row_exposure(index)  # One new data point
 
     def remove_member(self, index: int):
         """
@@ -67,6 +73,8 @@ class ChineseRestaurantTable:
             raise ValueError("Index must be a non-negative integer")
         if index in self.members:
             self.members.remove(index)
+            self.alpha -= self.data[index]
+            self.beta -= self._row_exposure(index)
 
     def return_parameters(self):
         """
