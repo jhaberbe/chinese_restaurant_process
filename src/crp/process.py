@@ -18,7 +18,7 @@ class ChineseRestaurantProcess:
         _table_type (class): The type of table to use.
     """
 
-    _table_type = DirichletMultinomialTable
+    _table_type = NegativeBinomialTable
 
     def __init__(self, data: np.array, expected_number_of_classes: int = 1):
         """
@@ -106,20 +106,37 @@ class ChineseRestaurantProcess:
         return {
             k: v.get_parameters(index=index) for k, v in self.classes.items()
         }
+    
+    def _reindex_classes(self) -> None:
+        """Compress class IDs to 0..K-1 and update assignments accordingly."""
+        if not self.classes:
+            return
+        old_ids = sorted(self.classes.keys())
+        old_to_new = {old: new for new, old in enumerate(old_ids)}
+        # remap classes
+        self.classes = {old_to_new[old]: tab for old, tab in self.classes.items()}
+        # remap assignments
+        self.assignments = [
+            (-1 if cid == -1 else old_to_new.get(cid, -1))
+            for cid in self.assignments
+        ]
 
     def run(self, epochs: int = 1, min_membership: float = 0.01):
         """
         Run the CRP model.
-
-        Args:
-            epochs (int): The number of epochs to run. Defaults to 1.
-            min_membership (float): The minimum membership threshold. Defaults to 0.01.
-
-        Notes:
-            The model is run for the specified number of epochs, with a shuffled selection of data points for robustness.
         """
+        n = self.data.shape[0]
         for epoch in range(epochs):
-            for index in tqdm(np.random.permutation(self.data.shape[0])):
+            order = np.random.permutation(n)
+            pbar = tqdm(order, desc=f"Epoch {epoch+1}/{epochs}", dynamic_ncols=True, leave=True)
+
+            # show initial K
+            K_prev = None
+            K = len(self.classes)
+            pbar.set_postfix_str(f"K={K}")
+            K_prev = K
+
+            for index in pbar:
                 crp_new = self.generate_new_table()
                 cluster_keys = list(self.classes.keys()) + ["new"]
                 nlls = []
@@ -142,6 +159,16 @@ class ChineseRestaurantProcess:
                 else:
                     self.classes[sampled_class].add_member(index)
                     self.assignments[index] = int(sampled_class)
+
+                # update tqdm postfix only when K changes
+                K = len(self.classes)
+                if K != K_prev:
+                    pbar.set_postfix_str(f"K={K}")
+                    K_prev = K
+
+            # compress class IDs at the end of the epoch
+            self._reindex_classes()
+
 
     def predict(self, X_new: np.ndarray, min_membership: float = 0.01) -> np.ndarray:
         """
@@ -171,7 +198,7 @@ class ChineseRestaurantProcess:
 
         class_keys = np.array(list(valid_classes.keys()))
         class_tables = [valid_classes[k] for k in class_keys]
-        class_log_priors = np.log1p([len(table.members) for table in class_tables])
+        class_log_priors = np.log([len(table.members) for table in class_tables])
 
         assignments = np.empty(X_new.shape[0], dtype=class_keys.dtype)
 
