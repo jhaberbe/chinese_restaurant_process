@@ -280,6 +280,10 @@ class NegativeBinomialTable(ChineseRestaurantTable):
         self.beta = np.ones(self.data.shape[1])   # prior rate
         self.reference_total = np.mean(np.sum(self.data, axis=1))
 
+    def _row_exposure(self, index: int) -> float:
+        total = float(np.sum(self.data[index]))
+        return (total / self.reference_total) if self.reference_total > 0 else 1.0
+
     def add_member(self, index: int):
         """
         Adds a member to the table at the specified index.
@@ -295,7 +299,7 @@ class NegativeBinomialTable(ChineseRestaurantTable):
         if index not in self.members:
             self.members.add(index)
             self.alpha += self.data[index]
-            self.beta += 1  # One new data point
+            self.beta += self._row_exposure(index)  # One new data point
 
     def remove_member(self, index: int):
         """
@@ -312,8 +316,8 @@ class NegativeBinomialTable(ChineseRestaurantTable):
         if index in self.members:
             self.members.remove(index)
             self.alpha -= self.data[index]
-            self.beta -= 1
-
+            self.beta -= self._row_exposure(index)
+    
     def _gamma_poisson_log_likelihood(self, count: np.ndarray, alpha: np.ndarray, beta: np.ndarray) -> float:
         """
         Calculates the log likelihood of the Negative Binomial model.
@@ -380,7 +384,7 @@ class NegativeBinomialTable(ChineseRestaurantTable):
         x = self.data[index]
         if posterior:
             alpha = self.alpha + x
-            beta = self.beta + 1
+            beta = self.beta + self._row_exposure(index)
         else:
             alpha = self.alpha
             beta = self.beta
@@ -560,6 +564,8 @@ class BernoulliTable(ChineseRestaurantTable):
             log(count * (alpha / (alpha + beta)))
         """
         return self._bernoulli_likelihood(count, self.alpha, self.beta)
+
+
 
 class GaussianTable(ChineseRestaurantTable):
     """
