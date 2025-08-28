@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.special import gammaln
+from scipy.stats import t
 
 class ChineseRestaurantTable:
     """
@@ -559,3 +560,114 @@ class BernoulliTable(ChineseRestaurantTable):
             log(count * (alpha / (alpha + beta)))
         """
         return self._bernoulli_likelihood(count, self.alpha, self.beta)
+
+class GaussianTable(ChineseRestaurantTable):
+    """
+    Represents a table in a Gaussian model using a Normal-Inverse-Gamma prior.
+
+    Attributes:
+        data (np.ndarray): A 2D array storing the table's data.
+        members (set): A set of unique indices representing the table's members.
+        mu0 (np.ndarray): Prior mean.
+        lambda0 (float): Prior strength for mean.
+        alpha0 (float): Prior shape for variance.
+        beta0 (float): Prior scale for variance.
+    """
+
+    def __init__(self, data: np.ndarray):
+        if not isinstance(data, np.ndarray):
+            raise TypeError("Data must be a numpy array")
+
+        self.data = np.array(data)
+        self.members = set()
+
+        # Prior parameters
+        self.mu0 = np.zeros(self.data.shape[1])
+        self.lambda0 = 1.0
+        self.alpha0 = 2.0
+        self.beta0 = 2.0
+
+        # Posterior parameters
+        self._update_posterior()
+
+    def _update_posterior(self):
+        """
+        Recalculate posterior parameters based on current members.
+        """
+        if not self.members:
+            self.mu_n = self.mu0
+            self.lambda_n = self.lambda0
+            self.alpha_n = self.alpha0
+            self.beta_n = self.beta0
+            return
+
+        member_data = self.data[list(self.members)]
+        n = len(self.members)
+        x_bar = np.mean(member_data, axis=0)
+        sse = np.sum((member_data - x_bar) ** 2, axis=0)
+
+        self.lambda_n = self.lambda0 + n
+        self.mu_n = (self.lambda0 * self.mu0 + n * x_bar) / self.lambda_n
+        self.alpha_n = self.alpha0 + n / 2
+        self.beta_n = self.beta0 + 0.5 * sse + \
+            (self.lambda0 * n * (x_bar - self.mu0) ** 2) / (2 * self.lambda_n)
+
+    def add_member(self, index: int):
+        if index < 0 or index >= len(self.data):
+            raise ValueError("Index must be valid and non-negative")
+        if index not in self.members:
+            self.members.add(index)
+            self._update_posterior()
+
+    def remove_member(self, index: int):
+        if index in self.members:
+            self.members.remove(index)
+            self._update_posterior()
+
+    def log_likelihood(self, index: int, posterior: bool = False) -> float:
+        """
+        Compute log-likelihood of the data at `index` under the model.
+        If `posterior=True`, use updated parameters including that point.
+        """
+        x = self.data[index]
+        mu = self.mu_n
+        lambda_ = self.lambda_n
+        alpha = self.alpha_n
+        beta = self.beta_n
+
+        if posterior:
+            # Temporarily add and remove index to get posterior with this data point
+            self.add_member(index)
+            mu = self.mu_n
+            lambda_ = self.lambda_n
+            alpha = self.alpha_n
+            beta = self.beta_n
+            self.remove_member(index)
+
+        # Student-t log likelihood approximation
+        dof = 2 * alpha
+        scale = np.sqrt(beta * (lambda_ + 1) / (alpha * lambda_))
+        t_logpdf = t.logpdf(x, df=dof, loc=mu, scale=scale)
+        return np.sum(t_logpdf)
+
+    def predict(self, x: np.ndarray) -> float:
+        """
+        Predict the log likelihood of a new observation x.
+        """
+        x = np.asarray(x)
+        return self.log_likelihood(index=None, posterior=False)
+
+    def return_parameters(self, index=None) -> pd.DataFrame:
+        """
+        Returns current posterior mean and variance estimates.
+        """
+        mean = self.mu_n
+        var = self.beta_n / (self.alpha_n - 1)
+        parameters = pd.DataFrame({
+            "mean": mean,
+            "variance": var
+        })
+
+        if index is not None:
+            parameters.index = index
+        return parameters
