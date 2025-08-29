@@ -56,11 +56,7 @@ labels = crp.predict(X_new, min_membership=0.0)
 
 ### Documentation
 
-<<<<<<< HEAD
 We have a few tutorials in the `notebook/` folder. They go over basic usage, and also try to explain how inference is going to be performed.
-=======
-We have several notebooks in the `notebooks` directory that demonstrate the usage of the Chinese Restaurant Process. You can run these notebooks to see how the package works in practice.
->>>>>>> c78e78c2e5e62d5fa474627a86c92687e57afef4
 
 Recommended reading order is:
 - Usage.ipynb
