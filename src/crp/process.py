@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from .table import ChineseRestaurantTable, DirichletMultinomialTable
+from .table import ChineseRestaurantTable, DirichletMultinomialTable, NegativeBinomialTable
 
 class ChineseRestaurantProcess:
     """
