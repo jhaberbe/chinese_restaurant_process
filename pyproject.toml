@@ -3,15 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-<<<<<<< HEAD
 name = "chinese_restauraunt_process"
 version = "0.2.0"
 description = "Chinese Restaurant Processes in Python"
-=======
-name = "chinese-restauraunt-process"
-version = "0.1.1"
-description = "Chinese Restaurant Process in Python"
->>>>>>> c78e78c2e5e62d5fa474627a86c92687e57afef4
 authors = [{ name = "James Haberberger", email = "jhaberbe@stanford.edu" }]
 dependencies = [
     "ipykernel>=6.29.5",
