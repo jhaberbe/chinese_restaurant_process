@@ -569,7 +569,9 @@ class BernoulliTable(ChineseRestaurantTable):
         """
         return self._bernoulli_likelihood(count, self.alpha, self.beta)
 
-class GaussianTable(ChineseRestaurantTable):
+
+
+class GaussianTable:
     """
     Fast Gaussian model using a Normal-Inverse-Gamma prior with sufficient statistics.
     """
