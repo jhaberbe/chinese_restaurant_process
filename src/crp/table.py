@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 from scipy.special import gammaln
 from scipy.stats import t
+from typing import Optional, Union
+
+
+
 
 class ChineseRestaurantTable:
     """
@@ -565,115 +569,128 @@ class BernoulliTable(ChineseRestaurantTable):
         """
         return self._bernoulli_likelihood(count, self.alpha, self.beta)
 
-
-
 class GaussianTable(ChineseRestaurantTable):
     """
-    Represents a table in a Gaussian model using a Normal-Inverse-Gamma prior.
-
-    Attributes:
-        data (np.ndarray): A 2D array storing the table's data.
-        members (set): A set of unique indices representing the table's members.
-        mu0 (np.ndarray): Prior mean.
-        lambda0 (float): Prior strength for mean.
-        alpha0 (float): Prior shape for variance.
-        beta0 (float): Prior scale for variance.
+    Fast Gaussian model using a Normal-Inverse-Gamma prior with sufficient statistics.
     """
 
     def __init__(self, data: np.ndarray):
-        if not isinstance(data, np.ndarray):
-            raise TypeError("Data must be a numpy array")
+        if not isinstance(data, np.ndarray) or data.ndim != 2:
+            raise ValueError("Data must be a 2D numpy array")
 
-        self.data = np.array(data)
+        self.data = data
+        self.D = data.shape[1]
         self.members = set()
 
         # Prior parameters
-        self.mu0 = np.zeros(self.data.shape[1])
+        self.mu0 = np.zeros(self.D)
         self.lambda0 = 1.0
         self.alpha0 = 2.0
         self.beta0 = 2.0
 
-        # Posterior parameters
+        # Sufficient statistics
+        self._n = 0
+        self._sum_x = np.zeros(self.D)
+        self._sum_x2 = np.zeros(self.D)
+
+        # Posterior
         self._update_posterior()
 
     def _update_posterior(self):
-        """
-        Recalculate posterior parameters based on current members.
-        """
-        if not self.members:
-            self.mu_n = self.mu0
+        if self._n == 0:
+            self.mu_n = self.mu0.copy()
             self.lambda_n = self.lambda0
             self.alpha_n = self.alpha0
             self.beta_n = self.beta0
             return
 
-        member_data = self.data[list(self.members)]
-        n = len(self.members)
-        x_bar = np.mean(member_data, axis=0)
-        sse = np.sum((member_data - x_bar) ** 2, axis=0)
+        x_bar = self._sum_x / self._n
+        sse = self._sum_x2 - (self._sum_x ** 2) / self._n
 
-        self.lambda_n = self.lambda0 + n
-        self.mu_n = (self.lambda0 * self.mu0 + n * x_bar) / self.lambda_n
-        self.alpha_n = self.alpha0 + n / 2
-        self.beta_n = self.beta0 + 0.5 * sse + \
-            (self.lambda0 * n * (x_bar - self.mu0) ** 2) / (2 * self.lambda_n)
+        self.lambda_n = self.lambda0 + self._n
+        self.mu_n = (self.lambda0 * self.mu0 + self._sum_x) / self.lambda_n
+        self.alpha_n = self.alpha0 + self._n / 2
+        self.beta_n = self.beta0 + 0.5 * sse + (
+            self.lambda0 * self._n * (x_bar - self.mu0) ** 2
+        ) / (2 * self.lambda_n)
+
+    def _compute_posterior_with(self, x: np.ndarray):
+        """
+        Compute posterior parameters if x is added (without mutating the object).
+        Much faster than add/remove.
+        """
+        n_new = self._n + 1
+        sum_x_new = self._sum_x + x
+        sum_x2_new = self._sum_x2 + x ** 2
+        x_bar_new = sum_x_new / n_new
+        sse_new = sum_x2_new - (sum_x_new ** 2) / n_new
+
+        lambda_n = self.lambda0 + n_new
+        mu_n = (self.lambda0 * self.mu0 + sum_x_new) / lambda_n
+        alpha_n = self.alpha0 + n_new / 2
+        beta_n = self.beta0 + 0.5 * sse_new + (
+            self.lambda0 * n_new * (x_bar_new - self.mu0) ** 2
+        ) / (2 * lambda_n)
+
+        return mu_n, lambda_n, alpha_n, beta_n
 
     def add_member(self, index: int):
-        if index < 0 or index >= len(self.data):
-            raise ValueError("Index must be valid and non-negative")
-        if index not in self.members:
-            self.members.add(index)
-            self._update_posterior()
+        if index in self.members:
+            return
+        x = self.data[index]
+        self.members.add(index)
+        self._n += 1
+        self._sum_x += x
+        self._sum_x2 += x ** 2
+        self._update_posterior()
 
     def remove_member(self, index: int):
-        if index in self.members:
-            self.members.remove(index)
-            self._update_posterior()
+        if index not in self.members:
+            return
+        x = self.data[index]
+        self.members.remove(index)
+        self._n -= 1
+        self._sum_x -= x
+        self._sum_x2 -= x ** 2
+        self._update_posterior()
 
     def log_likelihood(self, index: int, posterior: bool = False) -> float:
         """
-        Compute log-likelihood of the data at `index` under the model.
-        If `posterior=True`, use updated parameters including that point.
+        Compute log-likelihood of a point, optionally using posterior as if added.
         """
         x = self.data[index]
-        mu = self.mu_n
-        lambda_ = self.lambda_n
-        alpha = self.alpha_n
-        beta = self.beta_n
-
         if posterior:
-            # Temporarily add and remove index to get posterior with this data point
-            self.add_member(index)
-            mu = self.mu_n
-            lambda_ = self.lambda_n
-            alpha = self.alpha_n
-            beta = self.beta_n
-            self.remove_member(index)
+            mu, lambda_, alpha, beta = self._compute_posterior_with(x)
+        else:
+            mu, lambda_, alpha, beta = self.mu_n, self.lambda_n, self.alpha_n, self.beta_n
 
-        # Student-t log likelihood approximation
         dof = 2 * alpha
         scale = np.sqrt(beta * (lambda_ + 1) / (alpha * lambda_))
-        t_logpdf = t.logpdf(x, df=dof, loc=mu, scale=scale)
-        return np.sum(t_logpdf)
+        return np.sum(t.logpdf(x, df=dof, loc=mu, scale=scale))
 
     def predict(self, x: np.ndarray) -> float:
         """
-        Predict the log likelihood of a new observation x.
+        Predict log-likelihood of new observation x.
         """
         x = np.asarray(x)
-        return self.log_likelihood(index=None, posterior=False)
+        if x.shape != self.mu_n.shape:
+            raise ValueError("Shape mismatch between input and model")
+        return self._student_t_logpdf(x)
 
-    def return_parameters(self, index=None) -> pd.DataFrame:
+    def _student_t_logpdf(self, x: np.ndarray) -> float:
+        dof = 2 * self.alpha_n
+        scale = np.sqrt(self.beta_n * (self.lambda_n + 1) / (self.alpha_n * self.lambda_n))
+        return np.sum(t.logpdf(x, df=dof, loc=self.mu_n, scale=scale))
+
+    def return_parameters(self, index: Optional[Union[list, str]] = None) -> pd.DataFrame:
         """
-        Returns current posterior mean and variance estimates.
+        Return posterior mean and variance as a DataFrame.
         """
-        mean = self.mu_n
         var = self.beta_n / (self.alpha_n - 1)
-        parameters = pd.DataFrame({
-            "mean": mean,
+        df = pd.DataFrame({
+            "mean": self.mu_n,
             "variance": var
         })
-
         if index is not None:
-            parameters.index = index
-        return parameters
+            df.index = index
+        return df
