@@ -143,7 +143,7 @@ class ChineseRestaurantProcess:
                 for k in self.classes:
                     table = self.classes[k]
                     log_like = table.log_likelihood(index, posterior=True)
-                    log_prior = np.log1p(len(table.members))
+                    log_prior = np.log(len(table.members))
                     nlls.append(log_like + log_prior)
 
                 log_new = crp_new.log_likelihood(index, posterior=True) + np.log(self._alpha)
